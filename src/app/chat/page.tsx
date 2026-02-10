@@ -11,7 +11,7 @@ if (typeof window !== 'undefined') {
     (window as any).Buffer = require('buffer').Buffer;
 }
 
-let socket: Socket;
+
 
 function ChatRoomContent() {
     const router = useRouter();
@@ -37,6 +37,8 @@ function ChatRoomContent() {
     const peerRef = useRef<PeerInstance | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const socketRef = useRef<Socket | null>(null);
+    const localStreamRef = useRef<MediaStream | null>(null);
+    const isInitializing = useRef(false);
 
     // Auto-scroll chat
     useEffect(() => {
@@ -47,29 +49,40 @@ function ChatRoomContent() {
     useEffect(() => {
         let localStream: MediaStream | null = null;
 
+        if (isInitializing.current) return;
+        isInitializing.current = true;
+
         const startChat = async () => {
             try {
                 // 1. Get Media (VIDEO MODE ONLY)
                 if (!isTextMode) {
                     setStatus('Requesting Camera...');
                     try {
-                        // Request high quality video with a robust fallback
-                        localStream = await navigator.mediaDevices.getUserMedia({
+                        const newStream = await navigator.mediaDevices.getUserMedia({
                             video: {
-                                width: { min: 640, ideal: 1280 },
-                                height: { min: 480, ideal: 720 },
+                                width: { min: 320, ideal: 1280 },
+                                height: { min: 240, ideal: 720 },
                                 frameRate: { ideal: 30 }
                             },
                             audio: true
                         });
-                        setStream(localStream);
+
+                        // Check if we unmounted while waiting
+                        if (!isInitializing.current) {
+                            newStream.getTracks().forEach(t => t.stop());
+                            return;
+                        }
+
+                        localStreamRef.current = newStream;
+                        setStream(newStream);
                         if (myVideo.current) {
-                            myVideo.current.srcObject = localStream;
+                            myVideo.current.srcObject = newStream;
                             myVideo.current.muted = true;
                         }
                     } catch (e: any) {
                         console.error("Camera denied:", e);
                         setStatus('Camera Denied. Switch to Text Mode?');
+                        isInitializing.current = false;
                         return;
                     }
                 } else {
@@ -78,9 +91,7 @@ function ChatRoomContent() {
 
                 // 2. Connect Socket
                 const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001';
-                console.log('Connecting to Signaling Server:', socketUrl);
-
-                socket = io(socketUrl, {
+                const socket = io(socketUrl, {
                     transports: ['websocket'],
                     reconnection: true
                 });
@@ -101,7 +112,7 @@ function ChatRoomContent() {
                         const peer = new SimplePeer({
                             initiator: data.initiator,
                             trickle: true,
-                            stream: localStream || undefined,
+                            stream: localStreamRef.current || undefined,
                             config: {
                                 iceServers: [
                                     { urls: 'stun:stun.l.google.com:19302' },
@@ -115,8 +126,8 @@ function ChatRoomContent() {
                         });
 
                         peer.on('signal', (signal) => {
-                            if (socket.connected) {
-                                socket.emit('signal', { target: data.partnerId, signal });
+                            if (socketRef.current?.connected) {
+                                socketRef.current.emit('signal', { target: data.partnerId, signal });
                             }
                         });
 
@@ -136,7 +147,6 @@ function ChatRoomContent() {
 
                         peer.on('error', err => {
                             console.error('Peer connection error:', err);
-                            // Only skip if we were actually trying to connect
                             if (status !== 'Connected') {
                                 setStatus('Connection Failed. Retrying...');
                                 setTimeout(nextPartner, 2000);
@@ -149,13 +159,12 @@ function ChatRoomContent() {
                 });
 
                 socket.on('signal', (data) => {
-                    // Critical: Ensure the peer exists and is the correct one
                     try {
                         if (peerRef.current && !peerRef.current.destroyed) {
                             peerRef.current.signal(data.signal);
                         }
                     } catch (e) {
-                        console.warn("Signal error (likely normal during skip):", e);
+                        console.warn("Signal error:", e);
                     }
                 });
 
@@ -170,17 +179,26 @@ function ChatRoomContent() {
             } catch (err: any) {
                 console.error("Setup Error:", err);
                 setStatus(`Error: ${err.message}`);
+                isInitializing.current = false;
             }
         };
 
         startChat();
 
         return () => {
-            if (localStream) {
-                localStream.getTracks().forEach(track => track.stop());
+            isInitializing.current = false;
+            if (localStreamRef.current) {
+                localStreamRef.current.getTracks().forEach(track => track.stop());
+                localStreamRef.current = null;
             }
-            if (socketRef.current) socketRef.current.disconnect();
-            if (peerRef.current) peerRef.current.destroy();
+            if (socketRef.current) {
+                socketRef.current.disconnect();
+                socketRef.current = null;
+            }
+            if (peerRef.current) {
+                peerRef.current.destroy();
+                peerRef.current = null;
+            }
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isTextMode]);
