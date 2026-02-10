@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { io, Socket } from 'socket.io-client';
 import SimplePeer, { Instance as PeerInstance } from 'simple-peer';
-import { Mic, MicOff, Video, VideoOff, Send, SkipForward, AlertTriangle, Globe, Zap } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, Send, SkipForward, AlertTriangle, Globe, Zap, RefreshCw } from 'lucide-react';
 
 if (typeof window !== 'undefined') {
     (window as any).global = window;
@@ -28,6 +28,7 @@ function ChatRoomContent() {
     const [msgInput, setMsgInput] = useState('');
     const [status, setStatus] = useState(isTextMode ? 'Connecting Text Mode...' : 'Initializing Media...');
     const [micOn, setMicOn] = useState(true);
+    const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
 
     // Refs
     const myVideo = useRef<HTMLVideoElement>(null);
@@ -57,6 +58,7 @@ function ChatRoomContent() {
                     try {
                         const newStream = await navigator.mediaDevices.getUserMedia({
                             video: {
+                                facingMode: facingMode,
                                 width: { min: 320, ideal: 1280 },
                                 height: { min: 240, ideal: 720 },
                                 frameRate: { ideal: 30 }
@@ -111,7 +113,7 @@ function ChatRoomContent() {
 
                         const peer = new SimplePeer({
                             initiator: data.initiator,
-                            trickle: false, // Better robustness
+                            trickle: false,
                             stream: localStreamRef.current || undefined,
                             config: {
                                 iceServers: [
@@ -141,7 +143,6 @@ function ChatRoomContent() {
                         });
 
                         peer.on('connect', () => {
-                            console.log('P2P connection established');
                             setStatus('Connected');
                         });
 
@@ -157,7 +158,6 @@ function ChatRoomContent() {
 
                         // Process Queue
                         if (signalQueue.current.length > 0) {
-                            console.log(`Flush ${signalQueue.current.length} queued signals`);
                             signalQueue.current.forEach(sig => peer.signal(sig));
                             signalQueue.current = [];
                         }
@@ -174,7 +174,6 @@ function ChatRoomContent() {
                             console.error("Signal Error:", e);
                         }
                     } else {
-                        console.log("Queueing signal...");
                         signalQueue.current.push(data.signal);
                     }
                 });
@@ -212,7 +211,7 @@ function ChatRoomContent() {
             }
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isTextMode]);
+    }, [isTextMode, facingMode]);
 
     const handlePartnerDisconnect = () => {
         setStatus('Partner Left. Searching...');
@@ -260,6 +259,11 @@ function ChatRoomContent() {
         }
     };
 
+    const flipCamera = () => {
+        setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
+        setStatus('Switching Camera...');
+    };
+
     // Skip on ESC
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -292,6 +296,13 @@ function ChatRoomContent() {
                 </div>
                 <div className="flex gap-4">
                     <button
+                        onClick={flipCamera}
+                        className="text-zinc-600 hover:text-white transition-colors"
+                        title="Flip Camera"
+                    >
+                        <RefreshCw size={18} />
+                    </button>
+                    <button
                         onClick={() => setFaceLight(!faceLight)}
                         className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1 transition-all ${faceLight ? 'text-yellow-200 drop-shadow-[0_0_8px_rgba(253,224,71,0.5)]' : 'text-zinc-600 hover:text-zinc-400'}`}
                     >
@@ -305,15 +316,15 @@ function ChatRoomContent() {
 
             {/* Video Area */}
             <div className={`flex-1 grid grid-cols-1 md:grid-cols-2 gap-6 p-4 md:p-10 min-h-0 bg-zinc-950 ${isTextMode ? 'hidden' : ''}`}>
-                <div className="relative rounded-[2rem] md:rounded-[3.5rem] overflow-hidden bg-zinc-900 shadow-2xl border border-white/5 ring-1 ring-white/10 group">
-                    <video ref={myVideo} autoPlay playsInline muted className="w-full h-full object-cover transform scale-x-[-1] opacity-60 group-hover:opacity-100 transition-opacity duration-1000" />
+                <div className="relative aspect-[3/4] md:aspect-auto md:h-full rounded-[2.5rem] md:rounded-[4rem] overflow-hidden bg-zinc-900 shadow-2xl border border-white/5 ring-1 ring-white/10 group group-hover:ring-white/20 transition-all duration-500">
+                    <video ref={myVideo} autoPlay playsInline muted className={`w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-all duration-1000 ${facingMode === 'user' ? 'transform scale-x-[-1]' : ''}`} />
                     <div className="absolute top-6 left-6 px-4 py-2 rounded-2xl bg-black/40 backdrop-blur-xl border border-white/10 flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-zinc-500" />
                         <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-widest leading-none mt-0.5">Preview</span>
                     </div>
                 </div>
 
-                <div className="relative rounded-[2rem] md:rounded-[3.5rem] overflow-hidden bg-zinc-900 flex items-center justify-center shadow-2xl border border-white/5 ring-1 ring-white/10">
+                <div className="relative aspect-[3/4] md:aspect-auto md:h-full rounded-[2.5rem] md:rounded-[4rem] overflow-hidden bg-zinc-900 flex items-center justify-center shadow-2xl border border-white/5 ring-1 ring-white/10">
                     {remoteStream ? (
                         <>
                             <video ref={peerVideo} autoPlay playsInline className="w-full h-full object-cover animate-in fade-in zoom-in duration-1000" />
