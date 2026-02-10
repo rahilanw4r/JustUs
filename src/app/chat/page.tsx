@@ -53,7 +53,15 @@ function ChatRoomContent() {
                 if (!isTextMode) {
                     setStatus('Requesting Camera...');
                     try {
-                        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                        // Request high quality video with a better aspect ratio
+                        localStream = await navigator.mediaDevices.getUserMedia({
+                            video: {
+                                width: { ideal: 1280 },
+                                height: { ideal: 720 },
+                                frameRate: { ideal: 30 }
+                            },
+                            audio: true
+                        });
                         setStream(localStream);
                         if (myVideo.current) {
                             myVideo.current.srcObject = localStream;
@@ -238,19 +246,45 @@ function ChatRoomContent() {
                 </div>
             </div>
 
-            {/* Split View */}
-            <div className={`flex-1 flex flex-col md:flex-row min-h-0 bg-zinc-950 ${isTextMode ? 'hidden' : ''} overflow-y-auto`}>
+            {/* Split View - Cinematic Cards */}
+            <div className={`flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 p-4 min-h-0 bg-zinc-950 ${isTextMode ? 'hidden' : ''}`}>
 
-                {/* Local - Border Right */}
-                <div className="relative flex-1 bg-zinc-900/20 border-r border-zinc-900 overflow-hidden group">
-                    <video ref={myVideo} autoPlay playsInline muted className="w-full h-full object-cover transform scale-x-[-1] opacity-50 group-hover:opacity-100 transition-opacity duration-700" />
-                    <div className="absolute bottom-4 left-4 text-[10px] font-bold text-zinc-600 uppercase tracking-widest">You</div>
+                {/* Local - Person 1 */}
+                <div className="relative rounded-3xl overflow-hidden bg-zinc-900 shadow-2xl border border-zinc-800/50 group">
+                    <video ref={myVideo} autoPlay playsInline muted className="w-full h-full object-cover transform scale-x-[-1] opacity-60 group-hover:opacity-100 transition-opacity duration-1000" />
+
+                    {/* Glass HUD Label */}
+                    <div className="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-zinc-400" />
+                        <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-widest">Local Feed</span>
+                    </div>
+
+                    {/* Vignette Overlay */}
+                    <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.4)_100%)]" />
                 </div>
 
-                {/* Remote - Centered Placeholder */}
-                <div className="relative flex-1 bg-zinc-900/20 flex items-center justify-center overflow-hidden">
+                {/* Remote - Partner */}
+                <div className="relative rounded-3xl overflow-hidden bg-zinc-900 flex items-center justify-center shadow-2xl border border-zinc-800/50">
                     {remoteStream ? (
-                        <video ref={peerVideo} autoPlay playsInline className="w-full h-full object-cover" />
+                        <>
+                            <video ref={peerVideo} autoPlay playsInline className="w-full h-full object-cover animate-in fade-in zoom-in duration-1000" />
+
+                            {/* Partner HUD */}
+                            <div className="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center gap-2">
+                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                <span className="text-[10px] font-bold text-white uppercase tracking-widest">Live Connection</span>
+                            </div>
+
+                            {/* Partner Location Tag (If available) */}
+                            {userCountry !== 'Global' && (
+                                <div className="absolute bottom-4 left-4 px-3 py-1 text-[10px] font-medium text-zinc-500 uppercase tracking-tighter bg-black/20 rounded-md">
+                                    Encrypted P2P
+                                </div>
+                            )}
+
+                            {/* Vignette Overlay */}
+                            <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.2)_100%)]" />
+                        </>
                     ) : (
                         <div className="text-center space-y-4">
                             <div className="w-12 h-12 border border-zinc-800 rounded-full flex items-center justify-center mx-auto">
