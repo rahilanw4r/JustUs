@@ -93,7 +93,16 @@ function ChatRoomContent() {
                         const peer = new SimplePeer({
                             initiator: data.initiator,
                             trickle: false,
-                            stream: localStream || undefined
+                            stream: localStream || undefined,
+                            config: {
+                                iceServers: [
+                                    { urls: 'stun:stun.l.google.com:19302' },
+                                    { urls: 'stun:stun1.l.google.com:19302' },
+                                    { urls: 'stun:stun2.l.google.com:19302' },
+                                    { urls: 'stun:stun3.l.google.com:19302' },
+                                    { urls: 'stun:stun4.l.google.com:19302' },
+                                ]
+                            }
                         });
 
                         peer.on('signal', (signal) => {
@@ -199,7 +208,7 @@ function ChatRoomContent() {
     }, [nextPartner]);
 
     return (
-        <div className="h-screen bg-zinc-950 text-zinc-200 flex flex-col font-sans selection:bg-white selection:text-black relative">
+        <div className="h-screen h-[100dvh] bg-zinc-950 text-zinc-200 flex flex-col font-sans selection:bg-white selection:text-black relative overflow-hidden">
 
             {/* Face Light Overlay - Acts as a soft light source */}
             {faceLight && (
@@ -230,7 +239,7 @@ function ChatRoomContent() {
             </div>
 
             {/* Split View */}
-            <div className={`flex-1 flex flex-col md:flex-row min-h-0 bg-zinc-950 ${isTextMode ? 'hidden' : ''}`}>
+            <div className={`flex-1 flex flex-col md:flex-row min-h-0 bg-zinc-950 ${isTextMode ? 'hidden' : ''} overflow-y-auto`}>
 
                 {/* Local - Border Right */}
                 <div className="relative flex-1 bg-zinc-900/20 border-r border-zinc-900 overflow-hidden group">
@@ -262,7 +271,7 @@ function ChatRoomContent() {
             )}
 
             {/* Chat Area - Fixed Height */}
-            <div className={`${isTextMode ? 'flex-1' : 'h-[400px]'} border-t border-zinc-900 flex flex-col md:flex-row bg-zinc-950`}>
+            <div className={`${isTextMode ? 'flex-1' : 'h-[35vh] md:h-[400px]'} border-t border-zinc-900 flex flex-col md:flex-row bg-zinc-950`}>
 
                 {/* Sidebar */}
                 <div className="hidden md:flex flex-col w-64 border-r border-zinc-900 p-4 gap-2 bg-zinc-950">

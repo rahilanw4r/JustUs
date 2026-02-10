@@ -48,12 +48,12 @@ export default function Home() {
     };
 
     return (
-        <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col items-center justify-center p-6 font-sans relative">
+        <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col items-center justify-center p-4 md:p-6 font-sans relative overflow-x-hidden">
 
             {/* Subtle Grid - Barely Visible */}
-            <div className="absolute inset-0 bg-[linear-gradient(to_right,#27272a_1px,transparent_1px),linear-gradient(to_bottom,#27272a_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-20 pointer-events-none" />
+            <div className="absolute inset-0 bg-[linear-gradient(to_right,#27272a_1px,transparent_1px),linear-gradient(to_bottom,#27272a_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_60%_at_50%_50%,#000_70%,transparent_100%)] opacity-20 pointer-events-none" />
 
-            <div className="z-10 w-full max-w-xl space-y-12">
+            <div className="z-10 w-full max-w-xl space-y-8 md:space-y-12">
 
                 {/* Header */}
                 <div className="space-y-6 text-center">
@@ -61,7 +61,7 @@ export default function Home() {
                         <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                         Live Beta
                     </div>
-                    <h1 className="text-6xl sm:text-7xl font-semibold tracking-tight text-white">
+                    <h1 className="text-5xl sm:text-7xl font-semibold tracking-tight text-white mb-2">
                         JustUs.
                     </h1>
                     <p className="text-zinc-500 text-lg font-normal leading-relaxed max-w-sm mx-auto">
