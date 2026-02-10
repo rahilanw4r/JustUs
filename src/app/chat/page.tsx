@@ -314,22 +314,16 @@ function ChatRoomContent() {
                 </div>
             </div>
 
-            {/* Video Area */}
-            <div className={`flex-1 grid grid-cols-1 md:grid-cols-2 gap-6 p-4 md:p-10 min-h-0 bg-zinc-950 ${isTextMode ? 'hidden' : ''}`}>
-                <div className="relative aspect-[3/4] md:aspect-auto md:h-full rounded-[2.5rem] md:rounded-[4rem] overflow-hidden bg-zinc-900 shadow-2xl border border-white/5 ring-1 ring-white/10 group group-hover:ring-white/20 transition-all duration-500">
-                    <video ref={myVideo} autoPlay playsInline muted className={`w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-all duration-1000 ${facingMode === 'user' ? 'transform scale-x-[-1]' : ''}`} />
-                    <div className="absolute top-6 left-6 px-4 py-2 rounded-2xl bg-black/40 backdrop-blur-xl border border-white/10 flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-zinc-500" />
-                        <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-widest leading-none mt-0.5">Preview</span>
-                    </div>
-                </div>
+            {/* Video Area - Professional PIP on Mobile, Split on Desktop */}
+            <div className={`flex-1 relative md:grid md:grid-cols-2 md:gap-6 md:p-10 min-h-0 bg-zinc-950 ${isTextMode ? 'hidden' : ''}`}>
 
-                <div className="relative aspect-[3/4] md:aspect-auto md:h-full rounded-[2.5rem] md:rounded-[4rem] overflow-hidden bg-zinc-900 flex items-center justify-center shadow-2xl border border-white/5 ring-1 ring-white/10">
+                {/* Remote Feed (Background on Mobile) */}
+                <div className="absolute inset-0 md:relative md:inset-auto h-full flex items-center justify-center bg-zinc-900 md:rounded-[4rem] overflow-hidden md:shadow-2xl md:border md:border-white/5 md:ring-1 md:ring-white/10">
                     {remoteStream ? (
                         <>
                             <video ref={peerVideo} autoPlay playsInline className="w-full h-full object-cover animate-in fade-in zoom-in duration-1000" />
-                            <div className="absolute top-6 left-6 px-4 py-2 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 flex items-center gap-3">
-                                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                            <div className="absolute top-6 left-6 px-4 py-2 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 flex items-center gap-3 z-30">
+                                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
                                 <span className="text-[10px] font-bold text-white uppercase tracking-widest leading-none mt-0.5">Live Connection</span>
                             </div>
                         </>
@@ -338,10 +332,20 @@ function ChatRoomContent() {
                             <div className="w-12 h-12 border border-zinc-800 rounded-full flex items-center justify-center mx-auto">
                                 <div className="w-1 h-1 bg-zinc-500 rounded-full animate-ping" />
                             </div>
-                            <p className="text-zinc-600 text-xs font-medium tracking-wide uppercase">Searching Signal...</p>
+                            <p className="text-zinc-600 text-[10px] font-medium tracking-widest uppercase">Searching...</p>
                         </div>
                     )}
                 </div>
+
+                {/* Local Preview (Floating PIP on Mobile) */}
+                <div className="absolute bottom-6 right-6 w-28 h-40 md:relative md:bottom-0 md:right-0 md:w-auto md:h-full rounded-2xl md:rounded-[4rem] overflow-hidden bg-zinc-900 shadow-2xl border border-white/10 md:border-white/5 md:ring-1 md:ring-white/10 group z-40 transition-all duration-500">
+                    <video ref={myVideo} autoPlay playsInline muted className={`w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-all duration-1000 ${facingMode === 'user' ? 'transform scale-x-[-1]' : ''}`} />
+                    <div className="absolute top-3 left-3 md:top-6 md:left-6 px-2.5 py-1 md:px-4 md:py-2 rounded-lg md:rounded-2xl bg-black/40 backdrop-blur-xl border border-white/10 flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-zinc-500" />
+                        <span className="text-[8px] md:text-[10px] font-bold text-zinc-300 uppercase tracking-widest leading-none mt-0.5">Me</span>
+                    </div>
+                </div>
+
             </div>
 
             {/* Chat Area */}
