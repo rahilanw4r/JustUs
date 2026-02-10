@@ -53,11 +53,11 @@ function ChatRoomContent() {
                 if (!isTextMode) {
                     setStatus('Requesting Camera...');
                     try {
-                        // Request high quality video with a better aspect ratio
+                        // Request high quality video with a robust fallback
                         localStream = await navigator.mediaDevices.getUserMedia({
                             video: {
-                                width: { ideal: 1280 },
-                                height: { ideal: 720 },
+                                width: { min: 640, ideal: 1280 },
+                                height: { min: 480, ideal: 720 },
                                 frameRate: { ideal: 30 }
                             },
                             audio: true
@@ -100,7 +100,7 @@ function ChatRoomContent() {
                     if (!isTextMode) {
                         const peer = new SimplePeer({
                             initiator: data.initiator,
-                            trickle: false,
+                            trickle: true,
                             stream: localStream || undefined,
                             config: {
                                 iceServers: [
@@ -109,21 +109,39 @@ function ChatRoomContent() {
                                     { urls: 'stun:stun2.l.google.com:19302' },
                                     { urls: 'stun:stun3.l.google.com:19302' },
                                     { urls: 'stun:stun4.l.google.com:19302' },
+                                    { urls: 'stun:global.stun.twilio.com:3478' },
                                 ]
                             }
                         });
 
                         peer.on('signal', (signal) => {
-                            socket.emit('signal', { target: data.partnerId, signal });
+                            if (socket.connected) {
+                                socket.emit('signal', { target: data.partnerId, signal });
+                            }
                         });
 
                         peer.on('stream', (rStream) => {
+                            console.log('Remote stream received');
                             setRemoteStream(rStream);
-                            if (peerVideo.current) peerVideo.current.srcObject = rStream;
+                            if (peerVideo.current) {
+                                peerVideo.current.srcObject = rStream;
+                            }
                             setStatus('Connected');
                         });
 
-                        peer.on('error', err => console.error('Peer Error', err));
+                        peer.on('connect', () => {
+                            console.log('Peer-to-peer connection established');
+                            setStatus('Connected');
+                        });
+
+                        peer.on('error', err => {
+                            console.error('Peer connection error:', err);
+                            // Only skip if we were actually trying to connect
+                            if (status !== 'Connected') {
+                                setStatus('Connection Failed. Retrying...');
+                                setTimeout(nextPartner, 2000);
+                            }
+                        });
                         peerRef.current = peer;
                     } else {
                         setStatus('Connected (Text Only)');
@@ -131,7 +149,14 @@ function ChatRoomContent() {
                 });
 
                 socket.on('signal', (data) => {
-                    peerRef.current?.signal(data.signal);
+                    // Critical: Ensure the peer exists and is the correct one
+                    try {
+                        if (peerRef.current && !peerRef.current.destroyed) {
+                            peerRef.current.signal(data.signal);
+                        }
+                    } catch (e) {
+                        console.warn("Signal error (likely normal during skip):", e);
+                    }
                 });
 
                 socket.on('receive_message', (data) => {
@@ -247,43 +272,36 @@ function ChatRoomContent() {
             </div>
 
             {/* Split View - Cinematic Cards */}
-            <div className={`flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 p-4 min-h-0 bg-zinc-950 ${isTextMode ? 'hidden' : ''}`}>
+            <div className={`flex-1 grid grid-cols-1 md:grid-cols-2 gap-6 p-4 md:p-10 min-h-0 bg-zinc-950 ${isTextMode ? 'hidden' : ''}`}>
 
-                {/* Local - Person 1 */}
-                <div className="relative rounded-3xl overflow-hidden bg-zinc-900 shadow-2xl border border-zinc-800/50 group">
+                {/* Local - Preview */}
+                <div className="relative rounded-[2rem] md:rounded-[3.5rem] overflow-hidden bg-zinc-900 shadow-2xl border border-white/5 ring-1 ring-white/10 group">
                     <video ref={myVideo} autoPlay playsInline muted className="w-full h-full object-cover transform scale-x-[-1] opacity-60 group-hover:opacity-100 transition-opacity duration-1000" />
 
                     {/* Glass HUD Label */}
-                    <div className="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-zinc-400" />
-                        <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-widest">Local Feed</span>
+                    <div className="absolute top-6 left-6 px-4 py-2 rounded-2xl bg-black/40 backdrop-blur-xl border border-white/10 flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-zinc-500" />
+                        <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-widest leading-none mt-0.5">Preview</span>
                     </div>
 
                     {/* Vignette Overlay */}
-                    <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.4)_100%)]" />
+                    <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.5)_100%)]" />
                 </div>
 
                 {/* Remote - Partner */}
-                <div className="relative rounded-3xl overflow-hidden bg-zinc-900 flex items-center justify-center shadow-2xl border border-zinc-800/50">
+                <div className="relative rounded-[2rem] md:rounded-[3.5rem] overflow-hidden bg-zinc-900 flex items-center justify-center shadow-2xl border border-white/5 ring-1 ring-white/10">
                     {remoteStream ? (
                         <>
                             <video ref={peerVideo} autoPlay playsInline className="w-full h-full object-cover animate-in fade-in zoom-in duration-1000" />
 
                             {/* Partner HUD */}
-                            <div className="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center gap-2">
-                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                <span className="text-[10px] font-bold text-white uppercase tracking-widest">Live Connection</span>
+                            <div className="absolute top-6 left-6 px-4 py-2 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 flex items-center gap-3">
+                                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
+                                <span className="text-[10px] font-bold text-white uppercase tracking-widest leading-none mt-0.5">Live Connection</span>
                             </div>
 
-                            {/* Partner Location Tag (If available) */}
-                            {userCountry !== 'Global' && (
-                                <div className="absolute bottom-4 left-4 px-3 py-1 text-[10px] font-medium text-zinc-500 uppercase tracking-tighter bg-black/20 rounded-md">
-                                    Encrypted P2P
-                                </div>
-                            )}
-
                             {/* Vignette Overlay */}
-                            <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.2)_100%)]" />
+                            <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.3)_100%)]" />
                         </>
                     ) : (
                         <div className="text-center space-y-4">
