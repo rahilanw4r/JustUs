@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { io, Socket } from 'socket.io-client';
 import SimplePeer, { Instance as PeerInstance } from 'simple-peer';
-import { Mic, MicOff, Video, VideoOff, Send, SkipForward, AlertTriangle, Globe } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, Send, SkipForward, AlertTriangle, Globe, Zap } from 'lucide-react';
 
 if (typeof window !== 'undefined') {
     (window as any).global = window;
@@ -14,7 +14,9 @@ if (typeof window !== 'undefined') {
 let socket: Socket;
 
 function ChatRoomContent() {
+    const router = useRouter();
     const searchParams = useSearchParams();
+    const [faceLight, setFaceLight] = useState(false);
     const tagsParam = searchParams.get('tags');
     const userInterests = tagsParam ? tagsParam.split(',') : [];
     const isTextMode = searchParams.get('mode') === 'text';
@@ -178,111 +180,142 @@ function ChatRoomContent() {
         if (stream) {
             const audioTrack = stream.getAudioTracks()[0];
             if (audioTrack) {
-                audioTrack.enabled = !micOn;
-                setMicOn(!micOn);
+                audioTrack.enabled = !audioTrack.enabled;
+                setMicOn(audioTrack.enabled);
             }
         }
     };
 
+    // Skip on ESC
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                nextPartner();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [nextPartner]);
+
     return (
-        <div className="h-screen bg-[#111] text-white flex flex-col font-sans overflow-hidden">
-            {/* Top Bar */}
-            <div className="h-14 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between px-4">
-                <span className="font-bold text-cyan-400 flex items-center gap-2">
-                    NeoChat <span className="text-zinc-600 text-xs px-2 py-1 bg-zinc-800 rounded">{isTextMode ? 'TEXT MODE' : 'VIDEO MODE'}</span>
-                </span>
-                <span className="text-xs text-zinc-500 flex items-center gap-1">
-                    <Globe size={12} /> {userCountry} | {status}
-                </span>
+        <div className="h-screen bg-zinc-950 text-zinc-200 flex flex-col font-sans selection:bg-white selection:text-black relative">
+
+            {/* Face Light Overlay - Acts as a soft light source */}
+            {faceLight && (
+                <div className="absolute inset-0 pointer-events-none z-40 bg-white/10 mix-blend-overlay border-[50px] border-white/90 shadow-[inset_0_0_100px_rgba(255,255,255,0.5)] animate-in fade-in duration-700" />
+            )}
+
+            {/* Minimal Header */}
+            <div className="h-14 border-b border-zinc-900 flex items-center justify-between px-6 bg-zinc-950/50 backdrop-blur-sm z-50">
+                <div className="flex items-center gap-4">
+                    <span className="font-semibold text-lg tracking-tight text-white">JustUs.</span>
+                    <div className="h-4 w-px bg-zinc-800" />
+                    <span className="text-xs font-medium text-zinc-500 uppercase tracking-wider flex items-center gap-2">
+                        <span className={`w-1.5 h-1.5 rounded-full ${status === 'Connected' ? 'bg-emerald-500' : 'bg-zinc-700'}`} />
+                        {status}
+                    </span>
+                </div>
+                <div className="flex gap-4">
+                    <button
+                        onClick={() => setFaceLight(!faceLight)}
+                        className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1 transition-all ${faceLight ? 'text-yellow-200 drop-shadow-[0_0_8px_rgba(253,224,71,0.5)]' : 'text-zinc-600 hover:text-zinc-400'}`}
+                    >
+                        {faceLight ? <Zap size={14} fill="currentColor" /> : <Zap size={14} />} {faceLight ? 'Light On' : 'Light Off'}
+                    </button>
+                    <button onClick={() => window.location.href = '/'} className="text-xs font-medium text-zinc-500 hover:text-white transition-colors">
+                        Exit
+                    </button>
+                </div>
             </div>
 
-            {/* Split Screen Area (Hidden in Text Mode to focus on chat) */}
-            <div className={`flex-1 flex flex-col md:flex-row min-h-0 bg-black ${isTextMode ? 'hidden' : ''}`}>
-                {/* Local User */}
-                <div className="relative flex-1 bg-zinc-900 overflow-hidden border-r border-zinc-800">
-                    <video ref={myVideo} autoPlay playsInline muted className="w-full h-full object-cover transform scale-x-[-1]" />
-                    <div className="absolute bottom-4 left-4 bg-black/50 px-3 py-1 rounded text-xs backdrop-blur-md">You</div>
+            {/* Split View */}
+            <div className={`flex-1 flex flex-col md:flex-row min-h-0 bg-zinc-950 ${isTextMode ? 'hidden' : ''}`}>
+
+                {/* Local - Border Right */}
+                <div className="relative flex-1 bg-zinc-900/20 border-r border-zinc-900 overflow-hidden group">
+                    <video ref={myVideo} autoPlay playsInline muted className="w-full h-full object-cover transform scale-x-[-1] opacity-50 group-hover:opacity-100 transition-opacity duration-700" />
+                    <div className="absolute bottom-4 left-4 text-[10px] font-bold text-zinc-600 uppercase tracking-widest">You</div>
                 </div>
 
-                {/* Remote User */}
-                <div className="relative flex-1 bg-zinc-900 overflow-hidden flex items-center justify-center">
+                {/* Remote - Centered Placeholder */}
+                <div className="relative flex-1 bg-zinc-900/20 flex items-center justify-center overflow-hidden">
                     {remoteStream ? (
                         <video ref={peerVideo} autoPlay playsInline className="w-full h-full object-cover" />
                     ) : (
                         <div className="text-center space-y-4">
-                            <div className="animate-spin w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full mx-auto" />
-                            <p className="text-zinc-500 text-sm animate-pulse uppercase tracking-widest">{status}</p>
+                            <div className="w-12 h-12 border border-zinc-800 rounded-full flex items-center justify-center mx-auto">
+                                <div className="w-1 h-1 bg-zinc-500 rounded-full animate-ping" />
+                            </div>
+                            <p className="text-zinc-600 text-xs font-medium tracking-wide uppercase">Searching Signal...</p>
                         </div>
                     )}
-                    {partnerId && <div className="absolute top-4 right-4 bg-green-600 px-3 py-1 rounded text-xs font-bold animate-pulse shadow-lg">CONNECTED</div>}
                 </div>
             </div>
 
-            {/* Text Mode Placeholder (Visible ONLY in Text Mode) */}
+            {/* Text Mode Active State */}
             {isTextMode && (
-                <div className="h-24 bg-zinc-900 border-b border-zinc-800 flex items-center justify-center text-zinc-500 gap-2">
-                    <AlertTriangle size={20} />
-                    <span>Camera Disabled. Text Only Mode Active.</span>
+                <div className="h-16 border-b border-zinc-900 flex items-center justify-center gap-3 bg-zinc-900/10">
+                    <AlertTriangle size={14} className="text-zinc-500" />
+                    <span className="text-sm text-zinc-500 font-medium">Text Mode Active</span>
                 </div>
             )}
 
-            {/* Controls & Chat Container */}
-            <div className={`${isTextMode ? 'flex-1' : 'h-[40vh] md:h-80'} bg-zinc-900 border-t border-zinc-700 flex flex-col md:flex-row transition-all duration-300`}>
+            {/* Chat Area - Fixed Height */}
+            <div className={`${isTextMode ? 'flex-1' : 'h-[400px]'} border-t border-zinc-900 flex flex-col md:flex-row bg-zinc-950`}>
 
-                {/* Desktop Sidebar Controls */}
-                <div className="hidden md:flex flex-col w-64 border-r border-zinc-700 bg-zinc-900 p-6 gap-3">
+                {/* Sidebar */}
+                <div className="hidden md:flex flex-col w-64 border-r border-zinc-900 p-4 gap-2 bg-zinc-950">
                     {!isTextMode && (
-                        <button onClick={toggleMic} className={`py-4 rounded-lg font-bold border transition-all ${micOn ? 'border-zinc-600 text-zinc-300 hover:bg-zinc-800' : 'border-red-500 text-red-500 bg-red-500/10'}`}>
-                            {micOn ? 'Mute Mic' : 'Unmute Mic'}
+                        <button onClick={toggleMic} className={`w-full h-10 rounded-lg text-xs font-medium border flex items-center justify-center gap-2 transition-all ${micOn ? 'border-zinc-800 text-zinc-400 hover:bg-zinc-900' : 'border-red-900/30 text-red-700 bg-red-950/10'}`}>
+                            {micOn ? 'Microphone On' : 'Microphone Off'}
                         </button>
                     )}
-                    <button onClick={nextPartner} className="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white text-xl font-black rounded-lg shadow-lg shadow-cyan-500/20 transform active:scale-95 transition-all flex items-center justify-center gap-2">
-                        NEXT <SkipForward size={24} />
+                    <div className="flex-1" />
+                    <button onClick={nextPartner} className="w-full h-12 bg-white text-black hover:bg-zinc-200 rounded-lg text-sm font-semibold tracking-wide transition-all shadow-lg shadow-white/5 active:scale-[0.98]">
+                        Next Person
                     </button>
-                    <div className="text-center text-xs text-zinc-600">Press ESC to skip</div>
+                    <p className="text-center text-[10px] text-zinc-600 pt-2">ESC to Skip</p>
                 </div>
 
-                {/* Chat Area */}
-                <div className="flex-1 flex flex-col relative bg-zinc-900">
-                    {/* Message List */}
-                    <div className="flex-1 overflow-y-auto p-4 space-y-2 scroll-smooth">
+                {/* Messages */}
+                <div className="flex-1 flex flex-col relative bg-zinc-950">
+                    <div className="flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth">
                         {messages.map((msg, i) => (
                             <div key={i} className={`flex ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`max-w-[85%] px-4 py-2 rounded-2xl text-sm break-words ${msg.sender === 'me'
-                                    ? 'bg-blue-600 text-white rounded-br-none'
-                                    : 'bg-zinc-700 text-zinc-200 rounded-bl-none'
+                                <div className={`max-w-[80%] text-[14px] leading-relaxed ${msg.sender === 'me'
+                                    ? 'text-zinc-300 text-right'
+                                    : 'text-zinc-500 text-left'
                                     }`}>
-                                    {msg.content}
+                                    <span className={`block px-4 py-2 rounded-lg ${msg.sender === 'me' ? 'bg-zinc-900 border border-zinc-800 text-zinc-200' : 'bg-zinc-950 border border-zinc-900 text-zinc-400'}`}>
+                                        {msg.content}
+                                    </span>
                                 </div>
                             </div>
                         ))}
                         <div ref={messagesEndRef} />
                         {messages.length === 0 && (
-                            <div className="h-full flex items-center justify-center text-zinc-700 text-sm">
-                                {partnerId ? "Say hello!" : `Waiting for match in ${userCountry}...`}
+                            <div className="h-full flex items-center justify-center opacity-20">
+                                <span className="text-4xl">Start</span>
                             </div>
                         )}
                     </div>
 
-                    {/* Input Bar */}
-                    <div className="p-3 bg-zinc-800 flex gap-2 items-center">
-                        <button onClick={nextPartner} className="md:hidden p-3 bg-cyan-600 rounded-full text-white shadow-lg">
-                            <SkipForward size={20} />
+                    {/* Input */}
+                    <div className="p-4 border-t border-zinc-900 bg-zinc-950 flex gap-4">
+                        <button onClick={nextPartner} className="md:hidden p-3 bg-white text-black rounded-lg shadow-lg">
+                            <SkipForward size={18} />
                         </button>
                         <input
                             value={msgInput}
                             onChange={(e) => setMsgInput(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
                             disabled={!partnerId}
-                            placeholder={partnerId ? "Type a message..." : "Waiting..."}
-                            className="flex-1 bg-zinc-900 border border-zinc-700 text-white px-4 py-3 rounded-full outline-none focus:border-blue-500 transition-all disabled:opacity-50"
+                            placeholder={partnerId ? "Type here..." : "Waiting..."}
+                            className="flex-1 bg-zinc-900/50 border border-zinc-800 text-zinc-200 px-4 py-3 rounded-lg outline-none focus:border-zinc-700 transition-all text-sm placeholder:text-zinc-700 font-normal"
                         />
-                        <button
-                            onClick={sendMessage}
-                            disabled={!partnerId || !msgInput.trim()}
-                            className="p-3 bg-blue-600 rounded-full hover:bg-blue-500 disabled:bg-zinc-700 disabled:text-zinc-500 transition-colors"
-                        >
-                            <Send size={20} fill="currentColor" />
+                        <button onClick={sendMessage} disabled={!partnerId || !msgInput.trim()} className="p-3 text-zinc-400 hover:text-white transition-colors disabled:opacity-50">
+                            <Send size={18} />
                         </button>
                     </div>
                 </div>

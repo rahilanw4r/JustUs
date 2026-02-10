@@ -7,10 +7,19 @@ export default function Home() {
     const router = useRouter();
     const [interest, setInterest] = useState('');
     const [tags, setTags] = useState<string[]>([]);
+    const [showInterests, setShowInterests] = useState(false);
     const [country, setCountry] = useState('Global');
 
     useEffect(() => {
-        console.log("NeoChat Landing Page Mounted");
+        // Auto-detect country via IP
+        fetch('https://ipapi.co/json/')
+            .then(res => res.json())
+            .then(data => {
+                if (data.country_code) {
+                    setCountry(data.country_code);
+                }
+            })
+            .catch(err => console.error("IP Fetch failed:", err));
     }, []);
 
     const addTag = () => {
@@ -39,272 +48,145 @@ export default function Home() {
     };
 
     return (
-        <div className="min-h-screen bg-[#0A0A0A] text-white flex flex-col items-center justify-center p-4 relative overflow-hidden">
-            {/* Background Glow */}
-            <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_50%,rgba(76,29,149,0.15),transparent_70%)] pointer-events-none" />
+        <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col items-center justify-center p-6 font-sans relative">
 
-            <div className="z-10 max-w-2xl w-full text-center space-y-8">
-                <h1 className="text-6xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 animate-pulse">
-                    NeoChat
-                </h1>
-                <p className="text-zinc-400 text-xl font-light">
-                    The Next-Gen Random Video Chat. Secure. Fast. Anonymous.
-                </p>
+            {/* Subtle Grid - Barely Visible */}
+            <div className="absolute inset-0 bg-[linear-gradient(to_right,#27272a_1px,transparent_1px),linear-gradient(to_bottom,#27272a_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-20 pointer-events-none" />
 
-                {/* Filters */}
-                <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-6 rounded-2xl w-full max-w-md mx-auto space-y-4">
-                    <label className="block text-left text-sm font-medium text-zinc-400 uppercase tracking-widest">
-                        Match Settings
-                    </label>
+            <div className="z-10 w-full max-w-xl space-y-12">
 
-                    {/* Country Select */}
-                    <select
-                        value={country}
-                        onChange={(e) => setCountry(e.target.value)}
-                        className="w-full bg-black/80 border border-white/10 rounded-lg px-4 py-3 outline-none focus:border-cyan-500 text-zinc-300 max-h-60"
-                    >
-                        <option value="Global">Global / Worldwide 🌐</option>
-                        <option value="Afghanistan">Afghanistan</option>
-                        <option value="Albania">Albania</option>
-                        <option value="Algeria">Algeria</option>
-                        <option value="Andorra">Andorra</option>
-                        <option value="Angola">Angola</option>
-                        <option value="Antigua and Barbuda">Antigua and Barbuda</option>
-                        <option value="Argentina">Argentina</option>
-                        <option value="Armenia">Armenia</option>
-                        <option value="Australia">Australia</option>
-                        <option value="Austria">Austria</option>
-                        <option value="Azerbaijan">Azerbaijan</option>
-                        <option value="Bahamas">Bahamas</option>
-                        <option value="Bahrain">Bahrain</option>
-                        <option value="Bangladesh">Bangladesh</option>
-                        <option value="Barbados">Barbados</option>
-                        <option value="Belarus">Belarus</option>
-                        <option value="Belgium">Belgium</option>
-                        <option value="Belize">Belize</option>
-                        <option value="Benin">Benin</option>
-                        <option value="Bhutan">Bhutan</option>
-                        <option value="Bolivia">Bolivia</option>
-                        <option value="Bosnia and Herzegovina">Bosnia and Herzegovina</option>
-                        <option value="Botswana">Botswana</option>
-                        <option value="Brazil">Brazil</option>
-                        <option value="Brunei">Brunei</option>
-                        <option value="Bulgaria">Bulgaria</option>
-                        <option value="Burkina Faso">Burkina Faso</option>
-                        <option value="Burundi">Burundi</option>
-                        <option value="Cabo Verde">Cabo Verde</option>
-                        <option value="Cambodia">Cambodia</option>
-                        <option value="Cameroon">Cameroon</option>
-                        <option value="Canada">Canada</option>
-                        <option value="Central African Republic">Central African Republic</option>
-                        <option value="Chad">Chad</option>
-                        <option value="Chile">Chile</option>
-                        <option value="China">China</option>
-                        <option value="Colombia">Colombia</option>
-                        <option value="Comoros">Comoros</option>
-                        <option value="Congo (DRC)">Congo (DRC)</option>
-                        <option value="Congo (Republic)">Congo (Republic)</option>
-                        <option value="Costa Rica">Costa Rica</option>
-                        <option value="Croatia">Croatia</option>
-                        <option value="Cuba">Cuba</option>
-                        <option value="Cyprus">Cyprus</option>
-                        <option value="Czechia">Czechia</option>
-                        <option value="Denmark">Denmark</option>
-                        <option value="Djibouti">Djibouti</option>
-                        <option value="Dominica">Dominica</option>
-                        <option value="Dominican Republic">Dominican Republic</option>
-                        <option value="Ecuador">Ecuador</option>
-                        <option value="Egypt">Egypt</option>
-                        <option value="El Salvador">El Salvador</option>
-                        <option value="Equatorial Guinea">Equatorial Guinea</option>
-                        <option value="Eritrea">Eritrea</option>
-                        <option value="Estonia">Estonia</option>
-                        <option value="Eswatini">Eswatini</option>
-                        <option value="Ethiopia">Ethiopia</option>
-                        <option value="Fiji">Fiji</option>
-                        <option value="Finland">Finland</option>
-                        <option value="France">France</option>
-                        <option value="Gabon">Gabon</option>
-                        <option value="Gambia">Gambia</option>
-                        <option value="Georgia">Georgia</option>
-                        <option value="Germany">Germany</option>
-                        <option value="Ghana">Ghana</option>
-                        <option value="Greece">Greece</option>
-                        <option value="Grenada">Grenada</option>
-                        <option value="Guatemala">Guatemala</option>
-                        <option value="Guinea">Guinea</option>
-                        <option value="Guinea-Bissau">Guinea-Bissau</option>
-                        <option value="Guyana">Guyana</option>
-                        <option value="Haiti">Haiti</option>
-                        <option value="Honduras">Honduras</option>
-                        <option value="Hungary">Hungary</option>
-                        <option value="Iceland">Iceland</option>
-                        <option value="India">India</option>
-                        <option value="Indonesia">Indonesia</option>
-                        <option value="Iran">Iran</option>
-                        <option value="Iraq">Iraq</option>
-                        <option value="Ireland">Ireland</option>
-                        <option value="Israel">Israel</option>
-                        <option value="Italy">Italy</option>
-                        <option value="Jamaica">Jamaica</option>
-                        <option value="Japan">Japan</option>
-                        <option value="Jordan">Jordan</option>
-                        <option value="Kazakhstan">Kazakhstan</option>
-                        <option value="Kenya">Kenya</option>
-                        <option value="Kiribati">Kiribati</option>
-                        <option value="Korea, North">Korea, North</option>
-                        <option value="Korea, South">Korea, South</option>
-                        <option value="Kosovo">Kosovo</option>
-                        <option value="Kuwait">Kuwait</option>
-                        <option value="Kyrgyzstan">Kyrgyzstan</option>
-                        <option value="Laos">Laos</option>
-                        <option value="Latvia">Latvia</option>
-                        <option value="Lebanon">Lebanon</option>
-                        <option value="Lesotho">Lesotho</option>
-                        <option value="Liberia">Liberia</option>
-                        <option value="Libya">Libya</option>
-                        <option value="Liechtenstein">Liechtenstein</option>
-                        <option value="Lithuania">Lithuania</option>
-                        <option value="Luxembourg">Luxembourg</option>
-                        <option value="Madagascar">Madagascar</option>
-                        <option value="Malawi">Malawi</option>
-                        <option value="Malaysia">Malaysia</option>
-                        <option value="Maldives">Maldives</option>
-                        <option value="Mali">Mali</option>
-                        <option value="Malta">Malta</option>
-                        <option value="Mexico">Mexico</option>
-                        <option value="Moldova">Moldova</option>
-                        <option value="Monaco">Monaco</option>
-                        <option value="Mongolia">Mongolia</option>
-                        <option value="Montenegro">Montenegro</option>
-                        <option value="Morocco">Morocco</option>
-                        <option value="Mozambique">Mozambique</option>
-                        <option value="Myanmar">Myanmar (Burma)</option>
-                        <option value="Namibia">Namibia</option>
-                        <option value="Nauru">Nauru</option>
-                        <option value="Nepal">Nepal</option>
-                        <option value="Netherlands">Netherlands</option>
-                        <option value="New Zealand">New Zealand</option>
-                        <option value="Nicaragua">Nicaragua</option>
-                        <option value="Niger">Niger</option>
-                        <option value="Nigeria">Nigeria</option>
-                        <option value="North Macedonia">North Macedonia</option>
-                        <option value="Norway">Norway</option>
-                        <option value="Oman">Oman</option>
-                        <option value="Pakistan">Pakistan</option>
-                        <option value="Palau">Palau</option>
-                        <option value="Palestine">Palestine</option>
-                        <option value="Panama">Panama</option>
-                        <option value="Papua New Guinea">Papua New Guinea</option>
-                        <option value="Paraguay">Paraguay</option>
-                        <option value="Peru">Peru</option>
-                        <option value="Philippines">Philippines</option>
-                        <option value="Poland">Poland</option>
-                        <option value="Portugal">Portugal</option>
-                        <option value="Qatar">Qatar</option>
-                        <option value="Romania">Romania</option>
-                        <option value="Russia">Russia</option>
-                        <option value="Rwanda">Rwanda</option>
-                        <option value="Saint Kitts and Nevis">Saint Kitts and Nevis</option>
-                        <option value="Saint Lucia">Saint Lucia</option>
-                        <option value="Samoa">Samoa</option>
-                        <option value="San Marino">San Marino</option>
-                        <option value="Saudi Arabia">Saudi Arabia</option>
-                        <option value="Senegal">Senegal</option>
-                        <option value="Serbia">Serbia</option>
-                        <option value="Seychelles">Seychelles</option>
-                        <option value="Sierra Leone">Sierra Leone</option>
-                        <option value="Singapore">Singapore</option>
-                        <option value="Slovakia">Slovakia</option>
-                        <option value="Slovenia">Slovenia</option>
-                        <option value="Solomon Islands">Solomon Islands</option>
-                        <option value="Somalia">Somalia</option>
-                        <option value="South Africa">South Africa</option>
-                        <option value="South Sudan">South Sudan</option>
-                        <option value="Spain">Spain</option>
-                        <option value="Sri Lanka">Sri Lanka</option>
-                        <option value="Sudan">Sudan</option>
-                        <option value="Suriname">Suriname</option>
-                        <option value="Sweden">Sweden</option>
-                        <option value="Switzerland">Switzerland</option>
-                        <option value="Syria">Syria</option>
-                        <option value="Taiwan">Taiwan</option>
-                        <option value="Tajikistan">Tajikistan</option>
-                        <option value="Tanzania">Tanzania</option>
-                        <option value="Thailand">Thailand</option>
-                        <option value="Timor-Leste">Timor-Leste</option>
-                        <option value="Togo">Togo</option>
-                        <option value="Tonga">Tonga</option>
-                        <option value="Trinidad and Tobago">Trinidad and Tobago</option>
-                        <option value="Tunisia">Tunisia</option>
-                        <option value="Turkey">Turkey</option>
-                        <option value="Turkmenistan">Turkmenistan</option>
-                        <option value="Tuvalu">Tuvalu</option>
-                        <option value="Uganda">Uganda</option>
-                        <option value="Ukraine">Ukraine</option>
-                        <option value="United Arab Emirates">United Arab Emirates</option>
-                        <option value="United Kingdom">United Kingdom</option>
-                        <option value="United States">United States</option>
-                        <option value="Uruguay">Uruguay</option>
-                        <option value="Uzbekistan">Uzbekistan</option>
-                        <option value="Vanuatu">Vanuatu</option>
-                        <option value="Vatican City">Vatican City</option>
-                        <option value="Venezuela">Venezuela</option>
-                        <option value="Vietnam">Vietnam</option>
-                        <option value="Yemen">Yemen</option>
-                        <option value="Zambia">Zambia</option>
-                        <option value="Zimbabwe">Zimbabwe</option>
-                    </select>
-
-                    {/* Interest Input */}
-                    <div className="flex gap-2">
-                        <input
-                            type="text"
-                            value={interest}
-                            onChange={(e) => setInterest(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && addTag()}
-                            placeholder="Add Interest (e.g. Anime)..."
-                            className="flex-1 bg-black/50 border border-white/10 rounded-lg px-4 py-3 outline-none focus:border-cyan-500 transition-colors"
-                        />
-                        <button onClick={addTag} className="bg-white/10 hover:bg-white/20 p-3 rounded-lg transition-colors">
-                            <Hash className="w-5 h-5" />
-                        </button>
+                {/* Header */}
+                <div className="space-y-6 text-center">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-[10px] font-medium tracking-widest uppercase text-zinc-400">
+                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                        Live Beta
                     </div>
+                    <h1 className="text-6xl sm:text-7xl font-semibold tracking-tight text-white">
+                        JustUs.
+                    </h1>
+                    <p className="text-zinc-500 text-lg font-normal leading-relaxed max-w-sm mx-auto">
+                        A minimal space for <br /> real human connection.
+                    </p>
+                </div>
 
-                    {/* Tag Cloud */}
-                    <div className="flex flex-wrap gap-2 min-h-[40px]">
-                        {tags.map(tag => (
-                            <span key={tag} className="bg-cyan-900/30 text-cyan-300 px-3 py-1 rounded-full text-sm flex items-center gap-1 border border-cyan-500/20">
-                                #{tag}
-                                <button onClick={() => setTags(tags.filter(t => t !== tag))} className="hover:text-white">×</button>
-                            </span>
-                        ))}
+                {/* Card - Solid, tactile feel */}
+                <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-1 shadow-2xl shadow-black/50">
+                    <div className="bg-zinc-950 rounded-xl border border-zinc-800/50 p-6 space-y-6">
+
+                        {/* Inputs */}
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider pl-1">Region</label>
+                                    <select
+                                        value={country}
+                                        onChange={(e) => setCountry(e.target.value)}
+                                        className="w-full bg-zinc-900 border border-zinc-800 text-zinc-300 rounded-lg px-4 py-3 text-sm focus:border-zinc-600 focus:bg-zinc-800 outline-none transition-all appearance-none"
+                                    >
+                                        <option value="Global">Global</option>
+                                        <option value="US">United States</option>
+                                        <option value="IN">India</option>
+                                        <option value="GB">United Kingdom</option>
+                                        <option value="CA">Canada</option>
+                                        <option value="AU">Australia</option>
+                                        <option value="DE">Germany</option>
+                                        <option value="JP">Japan</option>
+                                        <option value="BR">Brazil</option>
+                                        <option value="KR">South Korea</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider pl-1">Select Vibe (Max 3)</label>
+
+                                    {/* Selected Tags Display */}
+                                    {tags.length > 0 && (
+                                        <div className="flex flex-wrap gap-2 pb-2">
+                                            {tags.map(tag => (
+                                                <span key={tag} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white text-black text-xs font-bold shadow-sm animate-in fade-in zoom-in duration-200">
+                                                    {tag}
+                                                    <button onClick={() => setTags(tags.filter(t => t !== tag))} className="hover:text-red-500 transition-colors">×</button>
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Expanded Preset Tags Grid */}
+                                    {showInterests ? (
+                                        <div className="space-y-4 animate-in slide-in-from-top-2 duration-300">
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                                {[
+                                                    '🎵 Music', '🎮 Gaming', '💬 Chill', '❤️ Dating',
+                                                    '🎬 Movies', '💻 Tech', '🎨 Art', '⚽ Sports',
+                                                    '✈️ Travel', '📚 Books', '😂 Memes', '🍲 Food',
+                                                    '👗 Fashion', '💃 Dance', '🐕 Pets', '🧘 Yoga'
+                                                ].map((tag) => (
+                                                    <button
+                                                        key={tag}
+                                                        onClick={() => {
+                                                            const cleanTag = tag.split(' ')[1];
+                                                            if (!tags.includes(cleanTag) && tags.length < 3) {
+                                                                setTags([...tags, cleanTag]);
+                                                            }
+                                                        }}
+                                                        disabled={tags.includes(tag.split(' ')[1])}
+                                                        className={`px-3 py-2 rounded-lg text-xs font-medium transition-all text-left flex items-center gap-2
+                                                            ${tags.includes(tag.split(' ')[1])
+                                                                ? 'bg-zinc-800 text-zinc-500 cursor-default opacity-50'
+                                                                : 'bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600 hover:bg-zinc-800'
+                                                            }`}
+                                                    >
+                                                        {tag}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            <button
+                                                onClick={() => setShowInterests(false)}
+                                                className="w-full py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-400 font-medium hover:text-white hover:bg-zinc-800 transition-all"
+                                            >
+                                                Done / Close
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <button
+                                            onClick={() => setShowInterests(true)}
+                                            className="w-full py-3 bg-zinc-900/50 border border-dashed border-zinc-800 rounded-lg text-sm text-zinc-500 font-medium hover:text-white hover:border-zinc-600 hover:bg-zinc-900 transition-all flex items-center justify-center gap-2 group"
+                                        >
+                                            <div className="w-5 h-5 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 group-hover:bg-zinc-700 group-hover:text-white transition-colors">+</div>
+                                            Select Vibe
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="h-px bg-zinc-900 w-full" />
+
+                        {/* Actions */}
+                        <div className="flex gap-3">
+                            <button
+                                onClick={startChat}
+                                className="flex-1 bg-white text-black hover:bg-zinc-200 h-12 rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-white/5"
+                            >
+                                Start Video
+                            </button>
+                            <button
+                                onClick={startTextChat}
+                                className="flex-1 bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600 h-12 rounded-lg font-medium text-sm transition-all"
+                            >
+                                Text Only
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
-                    <button
-                        onClick={startChat}
-                        className="group relative px-8 py-4 bg-white text-black font-bold rounded-xl text-lg overflow-hidden hover:scale-105 transition-transform"
-                    >
-                        <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-blue-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <span className="relative flex items-center gap-2 group-hover:text-white transition-colors">
-                            <Video className="w-5 h-5" /> Start Video
-                        </span>
-                    </button>
-
-                    <button
-                        onClick={startTextChat}
-                        className="px-8 py-4 bg-zinc-900 border border-zinc-800 rounded-xl text-lg font-bold hover:bg-zinc-800 transition-colors flex items-center gap-2 justify-center"
-                    >
-                        <Zap className="w-5 h-5 text-yellow-500" /> Text Only
-                    </button>
+                {/* Footer */}
+                <div className="flex justify-center gap-6 text-zinc-600 text-xs font-medium tracking-wide">
+                    <a href="/privacy" className="hover:text-zinc-400 transition-colors">Privacy</a>
+                    <span>•</span>
+                    <a href="/terms" className="hover:text-zinc-400 transition-colors">Terms</a>
+                    <span>•</span>
+                    <a href="/safety" className="hover:text-zinc-400 transition-colors">Safety</a>
                 </div>
-            </div>
-
-            <div className="absolute bottom-8 text-zinc-600 text-sm flex items-center gap-2">
-                <Globe className="w-4 h-4" /> 14,203 Users Online
             </div>
         </div>
     );

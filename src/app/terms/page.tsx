@@ -18,21 +18,21 @@ export default function TermsPage() {
                     <section className="space-y-4">
                         <h2 className="text-xl font-semibold text-white">1. Acceptance of Terms</h2>
                         <p className="text-zinc-400 leading-relaxed">
-                            By using the JustUs platform, you agree to these Terms. If you do not agree, please do not use the service.
+                            By accessing or using the JustUs platform, you agree to be bound by these Terms of Service. If you do not agree, please do not use the service.
                         </p>
                     </section>
 
                     <section className="space-y-4">
                         <h2 className="text-xl font-semibold text-white">2. User Conduct</h2>
                         <p className="text-zinc-400 leading-relaxed">
-                            You are responsible for your conduct. Do not harass others or engage in illegal activity.
+                            You are solely responsible for your conduct and any content you submit. You agree not to harass, bully, or engage in any unlawful activity.
                         </p>
                     </section>
 
                     <section className="space-y-4">
                         <h2 className="text-xl font-semibold text-white">3. Disclaimers</h2>
                         <p className="text-zinc-400 leading-relaxed">
-                            JUSTUS IS PROVIDED "AS IS". WE ARE NOT LIABLE FOR ACTIONS OF OTHER USERS.
+                            JUSTUS IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND. WE ARE NOT LIABLE FOR THE ACTIONS OF OTHER USERS. USE AT YOUR OWN RISK.
                         </p>
                     </section>
                 </div>

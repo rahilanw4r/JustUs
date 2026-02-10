@@ -20,11 +20,11 @@ let activePairs = {}; // Map socketId -> partnerId
 io.on('connection', (socket) => {
     console.log(`User connected: ${socket.id}`);
 
-    socket.on('join_queue', ({ interests = [] }) => {
-        // 1. Prevent Duplicates
+    socket.on('join_queue', ({ interests = [], country = 'Global', mode = 'video' }) => {
+        // 1. Prevent Duplicates & Cleanup
         if (waitingUsers.find(u => u.id === socket.id)) return;
 
-        // 2. Safety Cleanup (if reconnecting)
+        // Remove existing pairs if reconnecting
         const oldPartner = activePairs[socket.id];
         if (oldPartner) {
             io.to(oldPartner).emit('partner_left');
@@ -32,44 +32,73 @@ io.on('connection', (socket) => {
             delete activePairs[socket.id];
         }
 
-        console.log(`User ${socket.id} joining with interests: [${interests.join(', ')}]`);
+        console.log(`User ${socket.id} joining. Mode: ${mode}, Country: ${country}, Interests: [${interests.join(', ')}]`);
 
-        // 3. SMART MATCHING ENGINE
-        let partnerIndex = -1;
+        // 2. FIND MATCH (Cascading Priority)
+        // Filter by Mode first (must match video/text)
+        let candidates = waitingUsers.filter(u => u.id !== socket.id && u.mode === mode);
+        let partner = null;
 
-        if (interests.length > 0) {
-            // Priority: Find someone with overlapping interest
-            partnerIndex = waitingUsers.findIndex(u =>
-                u.id !== socket.id &&
-                u.interests.some(i => interests.includes(i))
-            );
+        if (candidates.length > 0) {
+
+            // A. If USER has interests, try to find a match for them
+            if (interests.length > 0) {
+                // Priority 1: Same Interest + Same Country
+                partner = candidates.find(u =>
+                    u.country === country &&
+                    u.interests.some(i => interests.includes(i))
+                );
+
+                // Priority 2: Same Interest (Any Country)
+                if (!partner) {
+                    partner = candidates.find(u =>
+                        u.interests.some(i => interests.includes(i))
+                    );
+                }
+            }
+
+            // B. If no interest match (or user has no interests), try Country Match
+            if (!partner) {
+                // Priority 3: Same Country (Any Interest)
+                partner = candidates.find(u => u.country === country);
+            }
+
+            // C. Fallback: Any available user
+            if (!partner) {
+                // Priority 4: Global Random
+                partner = candidates[0];
+            }
         }
 
-        // Fallback: If no interest match, find ANY random user (lazy random)
-        // TODO: In production, add a flag "strict_match_only" if user refuses random.
-        if (partnerIndex === -1) {
-            // Avoid matching with self
-            partnerIndex = waitingUsers.findIndex(u => u.id !== socket.id);
-        }
-
-        if (partnerIndex !== -1) {
-            const partner = waitingUsers.splice(partnerIndex, 1)[0];
+        if (partner) {
+            // Remove partner from waiting list
+            waitingUsers = waitingUsers.filter(u => u.id !== partner.id);
 
             activePairs[socket.id] = partner.id;
             activePairs[partner.id] = socket.id;
 
-            // Notify both with metadata
+            // Notify both
             const sharedInterests = interests.filter(i => partner.interests.includes(i));
-            const matchType = sharedInterests.length > 0 ? `Shared: ${sharedInterests.join(', ')}` : 'Random';
+            const commonTags = sharedInterests.length > 0 ? sharedInterests.join(', ') : 'Random';
 
-            io.to(partner.id).emit('match_found', { partnerId: socket.id, initiator: true, matchType });
-            io.to(socket.id).emit('match_found', { partnerId: partner.id, initiator: false, matchType });
+            io.to(partner.id).emit('match_found', {
+                partnerId: socket.id,
+                initiator: true,
+                country: country,
+                commonTags
+            });
+            io.to(socket.id).emit('match_found', {
+                partnerId: partner.id,
+                initiator: false,
+                country: partner.country,
+                commonTags
+            });
 
-            console.log(`Matched ${socket.id} & ${partner.id} (${matchType})`);
+            console.log(`Matched ${socket.id} (${country}) & ${partner.id} (${partner.country}) on [${commonTags}]`);
         } else {
             // No match found, add to waiting pool
-            waitingUsers.push({ id: socket.id, socket, interests });
-            console.log(`User ${socket.id} queued. Total Waiting: ${waitingUsers.length}`);
+            waitingUsers.push({ id: socket.id, socket, interests, country, mode });
+            console.log(`User ${socket.id} queued. Waiting: ${waitingUsers.length}`);
         }
     });
 
@@ -121,6 +150,7 @@ io.on('connection', (socket) => {
     });
 });
 
-server.listen(3001, () => {
-    console.log('Signaling server running on port 3001');
+const PORT = process.env.PORT || 3001;
+server.listen(PORT, () => {
+    console.log(`Signaling server running on port ${PORT}`);
 });
