@@ -11,8 +11,6 @@ if (typeof window !== 'undefined') {
     (window as any).Buffer = require('buffer').Buffer;
 }
 
-
-
 function ChatRoomContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -39,6 +37,7 @@ function ChatRoomContent() {
     const socketRef = useRef<Socket | null>(null);
     const localStreamRef = useRef<MediaStream | null>(null);
     const isInitializing = useRef(false);
+    const signalQueue = useRef<any[]>([]);
 
     // Auto-scroll chat
     useEffect(() => {
@@ -47,8 +46,6 @@ function ChatRoomContent() {
 
     // Main Init Effect
     useEffect(() => {
-        let localStream: MediaStream | null = null;
-
         if (isInitializing.current) return;
         isInitializing.current = true;
 
@@ -67,7 +64,7 @@ function ChatRoomContent() {
                             audio: true
                         });
 
-                        // Check if we unmounted while waiting
+                        // Check if unmounted while waiting
                         if (!isInitializing.current) {
                             newStream.getTracks().forEach(t => t.stop());
                             return;
@@ -109,9 +106,12 @@ function ChatRoomContent() {
 
                     // 4. Init Peer Connection (VIDEO MODE ONLY)
                     if (!isTextMode) {
+                        setStatus('Connecting Peer...');
+                        if (peerRef.current) peerRef.current.destroy();
+
                         const peer = new SimplePeer({
                             initiator: data.initiator,
-                            trickle: true,
+                            trickle: false, // Better robustness
                             stream: localStreamRef.current || undefined,
                             config: {
                                 iceServers: [
@@ -141,30 +141,41 @@ function ChatRoomContent() {
                         });
 
                         peer.on('connect', () => {
-                            console.log('Peer-to-peer connection established');
+                            console.log('P2P connection established');
                             setStatus('Connected');
                         });
 
                         peer.on('error', err => {
-                            console.error('Peer connection error:', err);
+                            console.error('Peer error:', err);
                             if (status !== 'Connected') {
                                 setStatus('Connection Failed. Retrying...');
                                 setTimeout(nextPartner, 2000);
                             }
                         });
+
                         peerRef.current = peer;
+
+                        // Process Queue
+                        if (signalQueue.current.length > 0) {
+                            console.log(`Flush ${signalQueue.current.length} queued signals`);
+                            signalQueue.current.forEach(sig => peer.signal(sig));
+                            signalQueue.current = [];
+                        }
                     } else {
-                        setStatus('Connected (Text Only)');
+                        setStatus('Connected (Text)');
                     }
                 });
 
                 socket.on('signal', (data) => {
-                    try {
-                        if (peerRef.current && !peerRef.current.destroyed) {
+                    if (peerRef.current && !peerRef.current.destroyed) {
+                        try {
                             peerRef.current.signal(data.signal);
+                        } catch (e) {
+                            console.error("Signal Error:", e);
                         }
-                    } catch (e) {
-                        console.warn("Signal error:", e);
+                    } else {
+                        console.log("Queueing signal...");
+                        signalQueue.current.push(data.signal);
                     }
                 });
 
@@ -208,6 +219,7 @@ function ChatRoomContent() {
         setRemoteStream(null);
         setPartnerId(null);
         setMessages([]);
+        signalQueue.current = [];
         if (peerRef.current) peerRef.current.destroy();
         peerRef.current = null;
 
@@ -218,9 +230,11 @@ function ChatRoomContent() {
 
     const nextPartner = () => {
         if (peerRef.current) peerRef.current.destroy();
+        peerRef.current = null;
         setRemoteStream(null);
         setPartnerId(null);
         setMessages([]);
+        signalQueue.current = [];
         setStatus('Skipping...');
 
         socketRef.current?.emit('leave_chat');
@@ -261,7 +275,7 @@ function ChatRoomContent() {
     return (
         <div className="h-screen h-[100dvh] bg-zinc-950 text-zinc-200 flex flex-col font-sans selection:bg-white selection:text-black relative overflow-hidden">
 
-            {/* Face Light Overlay - Acts as a soft light source */}
+            {/* Face Light Overlay */}
             {faceLight && (
                 <div className="absolute inset-0 pointer-events-none z-40 bg-white/10 mix-blend-overlay border-[50px] border-white/90 shadow-[inset_0_0_100px_rgba(255,255,255,0.5)] animate-in fade-in duration-700" />
             )}
@@ -289,37 +303,24 @@ function ChatRoomContent() {
                 </div>
             </div>
 
-            {/* Split View - Cinematic Cards */}
+            {/* Video Area */}
             <div className={`flex-1 grid grid-cols-1 md:grid-cols-2 gap-6 p-4 md:p-10 min-h-0 bg-zinc-950 ${isTextMode ? 'hidden' : ''}`}>
-
-                {/* Local - Preview */}
                 <div className="relative rounded-[2rem] md:rounded-[3.5rem] overflow-hidden bg-zinc-900 shadow-2xl border border-white/5 ring-1 ring-white/10 group">
                     <video ref={myVideo} autoPlay playsInline muted className="w-full h-full object-cover transform scale-x-[-1] opacity-60 group-hover:opacity-100 transition-opacity duration-1000" />
-
-                    {/* Glass HUD Label */}
                     <div className="absolute top-6 left-6 px-4 py-2 rounded-2xl bg-black/40 backdrop-blur-xl border border-white/10 flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-zinc-500" />
                         <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-widest leading-none mt-0.5">Preview</span>
                     </div>
-
-                    {/* Vignette Overlay */}
-                    <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.5)_100%)]" />
                 </div>
 
-                {/* Remote - Partner */}
                 <div className="relative rounded-[2rem] md:rounded-[3.5rem] overflow-hidden bg-zinc-900 flex items-center justify-center shadow-2xl border border-white/5 ring-1 ring-white/10">
                     {remoteStream ? (
                         <>
                             <video ref={peerVideo} autoPlay playsInline className="w-full h-full object-cover animate-in fade-in zoom-in duration-1000" />
-
-                            {/* Partner HUD */}
                             <div className="absolute top-6 left-6 px-4 py-2 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 flex items-center gap-3">
-                                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
+                                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                                 <span className="text-[10px] font-bold text-white uppercase tracking-widest leading-none mt-0.5">Live Connection</span>
                             </div>
-
-                            {/* Vignette Overlay */}
-                            <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.3)_100%)]" />
                         </>
                     ) : (
                         <div className="text-center space-y-4">
@@ -332,18 +333,8 @@ function ChatRoomContent() {
                 </div>
             </div>
 
-            {/* Text Mode Active State */}
-            {isTextMode && (
-                <div className="h-16 border-b border-zinc-900 flex items-center justify-center gap-3 bg-zinc-900/10">
-                    <AlertTriangle size={14} className="text-zinc-500" />
-                    <span className="text-sm text-zinc-500 font-medium">Text Mode Active</span>
-                </div>
-            )}
-
-            {/* Chat Area - Fixed Height */}
+            {/* Chat Area */}
             <div className={`${isTextMode ? 'flex-1' : 'h-[35vh] md:h-[400px]'} border-t border-zinc-900 flex flex-col md:flex-row bg-zinc-950`}>
-
-                {/* Sidebar */}
                 <div className="hidden md:flex flex-col w-64 border-r border-zinc-900 p-4 gap-2 bg-zinc-950">
                     {!isTextMode && (
                         <button onClick={toggleMic} className={`w-full h-10 rounded-lg text-xs font-medium border flex items-center justify-center gap-2 transition-all ${micOn ? 'border-zinc-800 text-zinc-400 hover:bg-zinc-900' : 'border-red-900/30 text-red-700 bg-red-950/10'}`}>
@@ -351,21 +342,16 @@ function ChatRoomContent() {
                         </button>
                     )}
                     <div className="flex-1" />
-                    <button onClick={nextPartner} className="w-full h-12 bg-white text-black hover:bg-zinc-200 rounded-lg text-sm font-semibold tracking-wide transition-all shadow-lg shadow-white/5 active:scale-[0.98]">
+                    <button onClick={nextPartner} className="w-full h-12 bg-white text-black hover:bg-zinc-200 rounded-lg text-sm font-semibold tracking-wide transition-all shadow-lg active:scale-[0.98]">
                         Next Person
                     </button>
-                    <p className="text-center text-[10px] text-zinc-600 pt-2">ESC to Skip</p>
                 </div>
 
-                {/* Messages */}
                 <div className="flex-1 flex flex-col relative bg-zinc-950">
                     <div className="flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth">
                         {messages.map((msg, i) => (
                             <div key={i} className={`flex ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`max-w-[80%] text-[14px] leading-relaxed ${msg.sender === 'me'
-                                    ? 'text-zinc-300 text-right'
-                                    : 'text-zinc-500 text-left'
-                                    }`}>
+                                <div className={`max-w-[80%] text-[14px] leading-relaxed ${msg.sender === 'me' ? 'text-zinc-300 text-right' : 'text-zinc-500 text-left'}`}>
                                     <span className={`block px-4 py-2 rounded-lg ${msg.sender === 'me' ? 'bg-zinc-900 border border-zinc-800 text-zinc-200' : 'bg-zinc-950 border border-zinc-900 text-zinc-400'}`}>
                                         {msg.content}
                                     </span>
@@ -375,14 +361,13 @@ function ChatRoomContent() {
                         <div ref={messagesEndRef} />
                         {messages.length === 0 && (
                             <div className="h-full flex items-center justify-center opacity-20">
-                                <span className="text-4xl">Start</span>
+                                <span className="text-4xl text-white">Start Chatting</span>
                             </div>
                         )}
                     </div>
 
-                    {/* Input */}
                     <div className="p-4 border-t border-zinc-900 bg-zinc-950 flex gap-4">
-                        <button onClick={nextPartner} className="md:hidden p-3 bg-white text-black rounded-lg shadow-lg">
+                        <button onClick={nextPartner} className="md:hidden p-3 bg-white text-black rounded-lg">
                             <SkipForward size={18} />
                         </button>
                         <input
@@ -391,9 +376,9 @@ function ChatRoomContent() {
                             onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
                             disabled={!partnerId}
                             placeholder={partnerId ? "Type here..." : "Waiting..."}
-                            className="flex-1 bg-zinc-900/50 border border-zinc-800 text-zinc-200 px-4 py-3 rounded-lg outline-none focus:border-zinc-700 transition-all text-sm placeholder:text-zinc-700 font-normal"
+                            className="flex-1 bg-zinc-900 border border-zinc-800 text-zinc-200 px-4 py-3 rounded-lg outline-none focus:border-zinc-700 transition-all text-sm"
                         />
-                        <button onClick={sendMessage} disabled={!partnerId || !msgInput.trim()} className="p-3 text-zinc-400 hover:text-white transition-colors disabled:opacity-50">
+                        <button onClick={sendMessage} disabled={!partnerId || !msgInput.trim()} className="p-3 text-zinc-400 hover:text-white transition-colors">
                             <Send size={18} />
                         </button>
                     </div>
@@ -405,7 +390,7 @@ function ChatRoomContent() {
 
 export default function ChatRoom() {
     return (
-        <Suspense fallback={<div className="text-white text-center mt-20">Loading NeoChat...</div>}>
+        <Suspense fallback={<div className="text-white text-center mt-20">Loading...</div>}>
             <ChatRoomContent />
         </Suspense>
     );
